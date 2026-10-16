@@ -1,21 +1,38 @@
 {
   "name": "video-player",
   "version": "1.0.0",
-  "description": "",
+  "description": "backend project",
   "keywords": [
-    "backend",
-    "videoplayer"
+    "akash",
+    "backend"
   ],
+  "homepage": "https://github.com/Heyyyakashhhh/Video-playerr#readme",
+  "bugs": {
+    "url": "https://github.com/Heyyyakashhhh/Video-playerr/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Heyyyakashhhh/Video-playerr.git"
+  },
   "license": "ISC",
-  "author": "akash mayrya",
-  "type": "commonjs",
+  "author": "Akash maurya",
+  "type": "module",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
   "dependencies": {
-    "express": "^5.3.0",
-    "mongoose": "^9.11.2",
+    "bcrypt": "^5.1.1",
+    "cloudinary": "^1.41.0",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "fs": "^0.0.1-security",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.0",
+    "mongoose-aggregate-paginate-v2": "^1.0.6",
+    "multer": "^1.4.5-lts.1",
     "nodemon": "^3.1.14"
   }
 }
