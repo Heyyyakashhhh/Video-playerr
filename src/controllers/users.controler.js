@@ -1,10 +1,31 @@
-import {asyncHander} from '../utils/asyncHandler.js'
+import {asyncHandler} from '../utils/asyncHandler.js'
 import {ApiError} from '../utils/apiError.js'
 import {User} from '../models/user.model.js'
 import {uploadToCloudinary} from '../utils/cloudinary.js'
 import {ApiResponse} from '../utils/apiResponse.js'
+import cookie from 'cookie-parser'
 
-const userController  = asyncHander(async(req,res)=>{
+
+
+const genrateRefreshAndAccessToken = async (userId)=>{
+    try{
+
+        const user = await User.findById(userId)
+        const accessToken = user.generateAccessToken()
+        const refreshToken  = user.generateRefreshToken()
+
+        user.refreshToken = refreshToken;
+
+        await user.save({validBeforeSave : false})
+        return {accessToken , refreshToken}
+
+
+    }catch(err){
+        throw new ApiError(500 , "something went wrong while generating access and refresh token")
+    }
+}
+
+const registerUser  = asyncHandler(async(req,res)=>{
 
     //get details from fronend
     //validation cheak - not empty or invalid data
@@ -62,4 +83,68 @@ const userController  = asyncHander(async(req,res)=>{
     )
 })
 
-export {userController as registerUser}
+
+const loginUser = asyncHandler(async(req,res)=>{{
+
+    //get dta = req.body
+    //validation cheak fild are not empty
+    //cheak user exist or not by email or username
+    //cheak password is correct or not
+    //generate access token and refresh token
+    //send cookie
+    //save refresh token in db
+    //return response to frontend
+
+
+    const {email,username,password} = req.body;
+    
+   
+    if([username,email,password].some((fields)=> fields?.trim()==="")) throw new ApiError(400 , "all filds are required");
+
+    const userCheak = await User.findOne({$or : [{email},{username}]});
+    
+    if(!userCheak) throw new ApiError(404 , "user not found with this email or username");
+
+    const isPasswordValid = await userCheak.isPasswordCorrect(password)
+
+    if(!isPasswordValid) throw new ApiError(401 , "incorrect details");
+
+
+    const {accessToken, refreshToken} = await genrateRefreshAndAccessToken(userCheak._id)
+    const userLoggedIn = await User.findById(userCheak._id).select("-password  -refreshToken")
+
+    const options ={
+        htppOnly : true,
+        secure : true
+    }
+
+
+    return res.status(200).cookie("accessToken" , accessToken , options).cookie("refreshToken",refreshToken,options)
+    .json(new ApiResponse(200 , {user : userLoggedIn , accessToken , refreshToken} , "User logged in successfully"))
+
+
+   
+}})
+
+
+const logoutUser = asyncHandler(async(req,res)=>{
+    await User.findByIdAndUpdate(req.user_.id ,{
+        $set :{refreshToken : undefined
+
+        }
+    }, {
+            new : true
+        })
+
+       const options ={
+        htppOnly : true,
+        secure : true
+    }
+
+    return res.status(200).clearCookie("accessToken" , options).clearCookie("accessToken",accessToken).json(
+        new ApiResponse(200 , {} , "User logged out successfully...")
+    )
+
+})
+
+export {  registerUser,loginUser}
