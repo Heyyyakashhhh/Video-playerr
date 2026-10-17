@@ -29,12 +29,14 @@ const userController  = asyncHander(async(req,res)=>{
     }
     
 
-    const avtarLocalPath = req.files?.avtar[0]?.path
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
+    const avatarLocalPath = req.files?.avatar?.[0]?.path;
+  
+    const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
 
-    if(!avtarLocalPath) throw new ApiError(400,"avtar image is required");
+    if(!avatarLocalPath) throw new
+     ApiError(400,"avtar image is required");
 
-    const avtarOnCloudinary = await uploadToCloudinary(avtarLocalPath);
+    const avtarOnCloudinary = await uploadToCloudinary(avatarLocalPath);
     const coverImageOnCloudinary = await uploadToCloudinary(coverImageLocalPath);
 
     if(!avtarOnCloudinary) throw new ApiError(500,"Failed to upload avtar image to cloudinary");
