@@ -1,21 +1,24 @@
-import { asyncHandler } from "../utils/asyncHandler";
+import { asyncHandler } from "../utils/asyncHandler.js";
 import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/apiError.js"
-import {jwt} from "jsonwebtoken"
+import jwt from "jsonwebtoken"
+import { get } from "mongoose";
 
 export const verfiyJwt = asyncHandler (async(req,res,next)=>{
     try{
-        const getToken = req.cookies?.accessToken || req.header?.("Authorization")?.replace("Bearer " , "");
+        const getToken = req.cookies.accessToken
+        
 
         if(!getToken ) throw new ApiError(401 , "unauthorized access - token not found");
 
-        const decodedToken = await jwt.verfiy(getToken , process.env.ACCESS_TOKEN_SECRET);
-
+        const decodedToken = jwt.verify(getToken , process.env.ACCESS_TOKEN_SECRET);
+       
         
 
         const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
+       
         if(!user) throw new ApiError(401 , "unauthorized access - user not found");
-        res.user = user;
+        req.user = user;
         next();
     }
     catch(error){
