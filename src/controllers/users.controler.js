@@ -1,9 +1,10 @@
 import {asyncHandler} from '../utils/asyncHandler.js'
 import {ApiError} from '../utils/apiError.js'
 import {User} from '../models/user.model.js'
-import {uploadToCloudinary} from '../utils/cloudinary.js'
+import {uploadToCloudinary , deleteFromCloudinary} from '../utils/cloudinary.js'
 import {ApiResponse} from '../utils/apiResponse.js'
 import jwt from "jsonwebtoken"
+import { sendEmail, emailVerficationMailgenContent } from "../utils/mail.js";
 
 
 
@@ -70,6 +71,13 @@ const registerUser  = asyncHandler(async(req,res)=>{
         password , username : username.toLowerCase()
 
     })
+    const verificationUrl = `http://localhost:8000/api/v1/users/verify-email/${user._id}`;
+
+await sendEmail({
+    email: user.email,
+    subject: "Please verify your email address",
+    mailgenContent: emailVerficationMailgenContent(user.username, verificationUrl)
+});
 
     const userCreated = await User.findOne({_id : user._id}).select("-password -refreshToken ") //remove password and refresh token from response
 
@@ -80,9 +88,34 @@ const registerUser  = asyncHandler(async(req,res)=>{
     //return response to frontend
 
     return res.status(201).json(
-        new ApiResponse(201 , userCreated , "User registered successfully")
+        new ApiResponse(201 , userCreated , "Account created successfully. A verification link has been sent to your email. Please verify to log in")
     )
 })
+const verifyUserEmail = asyncHandler(async (req, res) => {
+    // 1. URL ke parameter se ID nikalo
+    const { userId } = req.params;
+
+    if (!userId) {
+        throw new ApiError(400, "Invalid or missing user ID");
+    }
+
+    // 2. Database mein user dhoondo aur uska status update karo
+    const user = await User.findById(userId);
+
+    if (!user) {
+        throw new ApiError(404, "User not found or link expired");
+    }
+
+    // Agar user model mein isEmailVerified field hai toh use true kar do
+    user.isEmailVerified = true;
+    await user.save({ validateBeforeSave: false });
+
+    // 3. Browser ko response bhejo
+    return res.status(200).json(
+        new ApiResponse(200, {}, "Email verified successfully! You can now login.")
+    );
+});
+
 
 
 const loginUser = asyncHandler(async(req,res)=>{{
@@ -107,6 +140,8 @@ const loginUser = asyncHandler(async(req,res)=>{{
     
     if(!userCheak) throw new ApiError(404 , "user not found with this email or username");
 
+    if(!userCheak.isEmailVerified) throw new ApiError(404 , "Email is not verifed please verify first before login")
+
     const isPasswordValid = await userCheak.isPasswordCorrect(password)
 
     if(!isPasswordValid) throw new ApiError(401 , "incorrect details");
@@ -124,7 +159,7 @@ const loginUser = asyncHandler(async(req,res)=>{{
 
 
     return res.status(200).cookie("accessToken" , accessToken , options).cookie("refreshToken",refreshToken,options)
-    .json(new ApiResponse(200 , {user : userLoggedIn.fullname } , "your logged in successfully"))
+    .json(new ApiResponse(200 , {user : userLoggedIn.fullname } , "you logged in successfully"))
 
 
    
@@ -194,32 +229,31 @@ const changeCurrentPassword = asyncHandler(async(req,res)=>{
     const {oldPassword , newPasword , confrimPassword} = req.body
     if(newPasword !==confrimPassword) throw new ApiError(401 , "Confrim password not matched")
 
-   try{
+   
      const user = await User.findById(req.user._id);
 
     if(!user) throw new ApiError(404 , "User not found");
 
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
     if(!isPasswordCorrect) throw new ApiError(400, "Invalid old password")
     
         user.password = newPasword;
         await user.save({validateBeforeSave: false})
         return res.status(200).json(new ApiResponse(200 , {username : user.username} , `your password changed successfully..`))
-   }catch(error){
-    throw new ApiError(500 , "Something went wrong while changing new password")
    }
-})
+)
 
 const getCurrentUser = asyncHandler(async(req,res)=>{
    try{
-     return res.status(200).json(200 , req.user ,"Crrent user fatched successfully")
+     return res.status(200).json(200 , {user : req.user} ,"Crrent user fatched successfully")
    }catch(error) {throw new ApiError(500, "Somthing went wrong while fetching current user details")}
 })
 
 const updateOtherDetails = asyncHandler(async(req,res)=>{
     const {fullname , email } = req.body
 
-    if(!fullname  || !email) throw new ApiError(400 , "All fields are required");
+    if(fullname==="" || email==="") throw new ApiError(400 , "All fields are required");
 
     const updatedUserDetails = await User.findByIdAndUpdate(req.user?._id , {
         $set :{
@@ -228,22 +262,31 @@ const updateOtherDetails = asyncHandler(async(req,res)=>{
         }
     }  ,{new:true}).select("-password")
 
-    if(!updateOtherDetails) throw  new ApiError(400 , "user not found")
+    if(!updatedUserDetails) throw  new ApiError(400 , "user not found")
 
     return res.status(200).json(new ApiResponse(200 , {fullname : fullname , email : email} , "Account details  updated successfully"))
 })
 
 const updateUserAvtarImg  =asyncHandler(async(req,res)=>{
-    const avtarLocalPath =req.file.path
+    const avtarLocalPath =req.file?.path
+   
     if (!avtarLocalPath) throw new ApiError(400, "Avtar image not found in local DB");
     
-    const avatar = uploadToCloudinary(avtarLocalPath);
+    const avatar = await uploadToCloudinary(avtarLocalPath);
+
+    const oldUser  = await User.findById(req.user?._id);
+    const oldAvtarUrl = oldUser.avatar
+    if(!oldAvtarUrl) throw new ApiError(404 , "Old Avtar image not found")
+
     if(!avatar.url) throw new ApiError(400 , "Error while uploading on avatar image");
     const user = await User.findByIdAndUpdate(req.user?._id , {
         $set :{
             avatar : avatar.url
         }
     } , {new:true}).select("-password")
+
+    if(oldAvtarUrl) deleteFromCloudinary(oldAvtarUrl)
+
     return res.status(200 ).json(new ApiResponse(200 , user , "Avatar image updated successfully.."))
 })
 
@@ -251,13 +294,13 @@ const updateUserCoverImg  =asyncHandler(async(req,res)=>{
     const coverLocalPath =req.file?.path
     if (!coverLocalPath) throw new ApiError(400, "Cover image not found in local DB");
     
-    const coverImg = uploadToCloudinary(coverLocalPath);
+    const coverImg = await uploadToCloudinary(coverLocalPath);
     if(!coverImg.url) throw new ApiError(400 , "Error while uploading on cover image");
     const user = await User.findByIdAndUpdate(req.user?._id , {
         $set :{
             coverImage : coverImg.url
         }
     } , {new:true}).select("-password")
-    return res.status(200 ).json(new ApiResponse(200 , user , "Cover image updated successfully.."))
+    return res.status(200 ).json(new ApiResponse(200 , req.user , "Cover image updated successfully.."))
 })
-export {  registerUser,loginUser , logoutUser,refreshAccsessToken,changeCurrentPassword , getCurrentUser,updateOtherDetails,updateUserAvtarImg , update}
+export {  registerUser,loginUser , logoutUser,refreshAccsessToken,changeCurrentPassword , getCurrentUser,updateOtherDetails,updateUserAvtarImg , updateUserCoverImg,verifyUserEmail}
