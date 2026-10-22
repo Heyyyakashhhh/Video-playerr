@@ -9,7 +9,7 @@ export const verfiyJwt = asyncHandler (async(req,res,next)=>{
         const getToken = req.cookies.accessToken
         
 
-        if(!getToken ) throw new ApiError(401 , "unauthorized access - token not found");
+        if(!getToken ) throw new ApiError(401 , "unauthorized access - Please login first");
 
         const decodedToken = jwt.verify(getToken , process.env.ACCESS_TOKEN_SECRET);
        
@@ -17,7 +17,7 @@ export const verfiyJwt = asyncHandler (async(req,res,next)=>{
 
         const user = await User.findById(decodedToken?._id).select("-password -refreshToken");
        
-        if(!user) throw new ApiError(401 , "unauthorized access - user not found");
+        if(!user) throw new ApiError(401 , "unauthorized access - user not found ");
         req.user = user;
         next();
     }

@@ -5,6 +5,7 @@ import {uploadToCloudinary , deleteFromCloudinary} from '../utils/cloudinary.js'
 import {ApiResponse} from '../utils/apiResponse.js'
 import jwt from "jsonwebtoken"
 import { sendEmail, emailVerficationMailgenContent } from "../utils/mail.js";
+import mongoose from "mongoose"
 
 
 
@@ -246,7 +247,13 @@ const changeCurrentPassword = asyncHandler(async(req,res)=>{
 
 const getCurrentUser = asyncHandler(async(req,res)=>{
    try{
-     return res.status(200).json(200 , {user : req.user} ,"Crrent user fatched successfully")
+    const user = await User.findById(req.user?._id).select("-password  -refreshToken")
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, { profile: user }, "Current user fetched successfully")
+        );
    }catch(error) {throw new ApiError(500, "Somthing went wrong while fetching current user details")}
 })
 
@@ -375,12 +382,13 @@ const getChannelProfile = asyncHandler(async(req,res)=>{
 })
 
 const getWatchHistory = asyncHandler(async(req,res)=>{
+
    const user = await User.aggregate([
-    {
-        $match:{
+     //Pipeline stages are separate BSON documents in the array:([{$match:{}},{$:{}},{}....])
+        {$match:{
             _id: new mongoose.Types.ObjectId(req.user._id) //coz req.user._id give "string" data only 
-        } ,
-        $lookup:{
+        } },
+        {$lookup:{
             from : "Videos",
             localField:"watchHistory",
             foreignField : "_id",
@@ -410,9 +418,10 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
                     }
                 }
             ]
-        }
-    }
+        }}
+    
    ])
+  
 
 if(!user?.length) throw new ApiError(400 , "User dose not exist")
 

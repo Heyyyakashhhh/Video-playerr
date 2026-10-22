@@ -16,7 +16,7 @@ router.route('/change-password').post(verfiyJwt,changeCurrentPassword)
 router.route('/current-user').get(verfiyJwt,getCurrentUser)
 router.route('/update-account').patch(verfiyJwt,updateOtherDetails)
 router.route('/avatar').patch(verfiyJwt, upload.single('avatar') , updateUserAvtarImg);
-router.route('/cover-image').patch(verfiyJwt , upload.single('/coverImage') , updateUserCoverImg);
+router.route('/cover-image').patch(verfiyJwt , upload.single('coverImage') , updateUserCoverImg);
 router.route('/c/:username').get(verfiyJwt , getChannelProfile)
 router.route('/history').get(verfiyJwt , getWatchHistory)
 
