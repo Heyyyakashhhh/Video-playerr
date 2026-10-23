@@ -12,7 +12,7 @@ const likeSchema = new Schema({
         ref: "User"
     },
     
-    vedio:{
+    video:{
       type: Schema.Types.ObjectId,
         ref: "Video"
     },
