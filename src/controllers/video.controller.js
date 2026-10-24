@@ -59,6 +59,7 @@ const getAllVideos= asyncHandler(async(req,res)=>{
                 pipeline :[
                     {
                         $project :{
+                            _id : 0,
                             fullname :1,
                             username: 1,
                             avatar:1
