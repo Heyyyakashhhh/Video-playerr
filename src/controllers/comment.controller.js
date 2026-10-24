@@ -13,7 +13,7 @@ const addComment = asyncHandler(async(req,res)=>{
     const {content} = req.body
 
     if(!isValidObjectId(videoId)) throw new ApiError(400 , "Invalid Video ID")
-    if(content.trim()==="")    throw new ApiError(400 , "Comment cant be empty")
+    if(!content?.trim()==="")    throw new ApiError(400 , "Comment cant be empty")
     
         const newComment = await Comment.create({
             content ,
@@ -62,7 +62,7 @@ const updateComment = asyncHandler(async(req,res)=>{
 
 const deleteComment = asyncHandler(async(req,res)=>{
     const {commentId} = req.params
-    if(!isValidObjectId) throw new ApiError(400 , "Invalid Comment ID")
+    if(!isValidObjectId(commentId)) throw new ApiError(400 , "Invalid Comment ID")
 
         const findComment = await Comment.findById(commentId)
         if(!findComment) throw new ApiError(400 , "Comment not found")
@@ -93,7 +93,7 @@ const getAllVideoComments = asyncHandler(async(req,res)=>{
                     pipeline:[
                    {
                      $project :{
-                        _id :0,
+                        _id :1,
                         fullname : 1,
                         username : 1,
                         avatar : 1
@@ -113,7 +113,7 @@ const getAllVideoComments = asyncHandler(async(req,res)=>{
             },
             {
                 $project :{
-                    _id : 0,
+                    _id : 1,
                     content : 1,
                     createdAt : 1,
                     Owner : 1
