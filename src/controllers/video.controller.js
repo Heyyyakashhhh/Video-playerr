@@ -1,6 +1,8 @@
 import {asyncHandler} from '../utils/asyncHandler.js'
 import {ApiError} from '../utils/apiError.js'
 import {Video} from '../models/video.model.js'
+import {User} from '../models/user.model.js'
+
 
 import {uploadToCloudinary , deleteFromCloudinary} from '../utils/cloudinary.js'
 import {ApiResponse} from '../utils/apiResponse.js'
@@ -134,15 +136,26 @@ const publishVideo = asyncHandler(async(req,res)=>{
 
 const getVideoByid = asyncHandler(async(req,res)=>{
     const {videoId} = req.params;
-    if(!videoId) throw new ApiError(400 , "Video id not found");
+    if(!isValidObjectId(video)) throw new ApiError(400 , "Video id not found");
 
-    const video = await Video.findByIdAndUpdate(
-        videoId , {
-            $inc : {views: 1}
-        } , {
-            new : true
-        }
-    ).populate("owner", "fullname username avatar");
+    const video = await Video.findByIdAndUpdate(videoId, {
+        $inc: { views: 1 }
+    } ,{new :true}).populate("owner", "fullname username avatar");;
+    
+   throw new ApiError(404, "Video does not exist or is not published yet");
+    if (req.user?._id) {
+        await User.findByIdAndUpdate(
+            req.user._id,
+            {
+                // $addToSet se duplicate entry nahi hoti
+                $addToSet: {
+                    watchHistory: videoId
+                }
+            }
+        );
+    }
+
+   
     if(!video) throw new ApiError(404 , "Video not publish yet please publish your video first..")
 
         return res.status(200).json(new ApiResponse(200 , video , "Video get successfully "))
@@ -166,7 +179,7 @@ const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
     const { title, discription } = req.body;
 
-    if(!videoId)  throw new ApiError(400 , "Invalid video ID")
+    if(!isValidObjectId(videoId))  throw new ApiError(400 , "Invalid video ID")
     if([title , discription].some((fields)=>fields?.trim()==="")) throw new ApiError(400 , "All fields are required")
     
     const oldVideoDetails = await Video.findById(videoId);

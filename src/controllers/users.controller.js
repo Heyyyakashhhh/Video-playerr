@@ -389,7 +389,7 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
             _id: new mongoose.Types.ObjectId(req.user._id) //coz req.user._id give "string" data only 
         } },
         {$lookup:{
-            from : "Videos",
+            from : "videos",
             localField:"watchHistory",
             foreignField : "_id",
             as : "watchHistory" ,
@@ -426,7 +426,7 @@ const getWatchHistory = asyncHandler(async(req,res)=>{
 if(!user?.length) throw new ApiError(400 , "User dose not exist")
 
     return res.status(200).json(
-        new ApiResponse(200,user[0].watchHistory , "Watch history fetch successfully..")
+        new ApiResponse(200,user[0]?.watchHistory || [] , "Watch history fetch successfully..")
     )
 })
 export {  registerUser,loginUser , logoutUser,refreshAccsessToken,changeCurrentPassword , getCurrentUser,updateOtherDetails,updateUserAvtarImg , updateUserCoverImg,verifyUserEmail,getChannelProfile,getWatchHistory}
