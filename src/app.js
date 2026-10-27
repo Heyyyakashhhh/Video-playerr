@@ -23,6 +23,7 @@ import commentRouter from "./routes/comment.route.js"
 import tweetRouter from "./routes/tweet.route.js"
 import playlistRouter from "./routes/playlist.route.js"
 import SubscriptionRouter from "./routes/subscriptions.route.js"
+import dashboardRouter from "./routes/dashboard.route.js";
 
 app.use('/api/v1/users', userRouter)
 app.use("/api/v1/videos", videoRouter)
@@ -31,4 +32,6 @@ app.use('/api/v1/comment' , commentRouter)
 app.use('/api/v1/tweet' , tweetRouter)
 app.use('/api/v1/playlist' , playlistRouter)
 app.use('/api/v1/subscription' , SubscriptionRouter)
+app.use("/api/v1/dashboard", dashboardRouter);
+
 export {app}
